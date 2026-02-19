@@ -20,7 +20,13 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
     }
 
     var stream: AsyncStream<[Entity]> {
-        AsyncStream { continuation in
+        makeStream(bufferingPolicy: .unbounded)
+    }
+    
+    func makeStream(
+        bufferingPolicy: AsyncStream<[Entity]>.Continuation.BufferingPolicy
+    ) -> AsyncStream<[Entity]> {
+        AsyncStream(bufferingPolicy: bufferingPolicy) { continuation in
             let id = UUID()
             continuations[id] = continuation
             continuation.yield(Array(byID.values))
@@ -36,6 +42,11 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
         if byID[entity.id] != nil {
             throw SimpleStoreError.alreadyExists
         }
+        byID[entity.id] = entity
+        publish()
+    }
+    
+    func upsert(_ entity: Entity) async throws {
         byID[entity.id] = entity
         publish()
     }
@@ -69,6 +80,11 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
         byID.removeAll(keepingCapacity: false)
         publish()
     }
+    
+    func replaceAll(with entities: [Entity]) async throws {
+        byID = Dictionary(uniqueKeysWithValues: entities.map { ($0.id, $0) })
+        publish()
+    }
 
     func loadAll() async throws -> [Entity] {
         Array(byID.values)
@@ -76,6 +92,26 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
 
     func all() async throws -> [Entity] {
         Array(byID.values)
+    }
+    
+    func filter(where predicate: @Sendable (Entity) -> Bool) async throws -> [Entity] {
+        Array(byID.values).filter(predicate)
+    }
+    
+    func contains(id: Identifier) async throws -> Bool {
+        byID[id] != nil
+    }
+    
+    func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool {
+        Array(byID.values).contains(where: predicate)
+    }
+    
+    func count() async throws -> Int {
+        byID.count
+    }
+    
+    func count(where predicate: @Sendable (Entity) -> Bool) async throws -> Int {
+        Array(byID.values).filter(predicate).count
     }
 
     func read(id: Identifier) async throws -> Entity {

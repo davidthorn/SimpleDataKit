@@ -58,17 +58,42 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         self.hasLoadedFromDisk = false
         self.continuations = [:]
     }
+    
+    /// Creates a store using a file name in a standard search-path directory.
+    /// - Parameters:
+    ///   - fileName: The file name used for persistence.
+    ///   - directory: The base directory in which to place the file.
+    ///   - fileManager: The file manager used for file operations.
+    ///   - encoder: The JSON encoder used for persistence.
+    ///   - decoder: The JSON decoder used for loading.
+    public init(
+        fileName: String,
+        directory: FileManager.SearchPathDirectory = .documentDirectory,
+        fileManager: FileManager = .default,
+        encoder: JSONEncoder = JSONEncoder(),
+        decoder: JSONDecoder = JSONDecoder()
+    ) throws {
+        let baseURL = try fileManager.url(for: directory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let fileURL = baseURL.appendingPathComponent(fileName)
+        self.init(fileURL: fileURL, fileManager: fileManager, encoder: encoder, decoder: decoder)
+    }
 
     public var stream: AsyncStream<[Entity]> {
-        AsyncStream { continuation in
+        makeStream(bufferingPolicy: .unbounded)
+    }
+    
+    public func makeStream(
+        bufferingPolicy: AsyncStream<[Entity]>.Continuation.BufferingPolicy
+    ) -> AsyncStream<[Entity]> {
+        AsyncStream(bufferingPolicy: bufferingPolicy) { continuation in
             let continuationID = UUID()
-            continuations[continuationID] = continuation
-            continuation.yield(snapshot())
             continuation.onTermination = { [continuationID] _ in
                 Task {
                     await self.removeContinuation(id: continuationID)
                 }
             }
+            continuation.yield(snapshot())
+            continuations[continuationID] = continuation
         }
     }
 
@@ -80,6 +105,17 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
 
         entitiesByID[entity.id] = entity
         orderedIDs.append(entity.id)
+        try persistToDisk()
+        broadcastSnapshot()
+    }
+    
+    public func upsert(_ entity: Entity) async throws {
+        try await ensureLoadedFromDisk()
+        let exists = entitiesByID[entity.id] != nil
+        entitiesByID[entity.id] = entity
+        if exists == false {
+            orderedIDs.append(entity.id)
+        }
         try persistToDisk()
         broadcastSnapshot()
     }
@@ -134,6 +170,14 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         try persistToDisk()
         broadcastSnapshot()
     }
+    
+    public func replaceAll(with entities: [Entity]) async throws {
+        entitiesByID = Dictionary(uniqueKeysWithValues: entities.map { ($0.id, $0) })
+        orderedIDs = entities.map { $0.id }
+        hasLoadedFromDisk = true
+        try persistToDisk()
+        broadcastSnapshot()
+    }
 
     public func loadAll() async throws -> [Entity] {
         let loaded = try readAllFromDisk()
@@ -148,6 +192,31 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func all() async throws -> [Entity] {
         try await ensureLoadedFromDisk()
         return snapshot()
+    }
+    
+    public func filter(where predicate: @Sendable (Entity) -> Bool) async throws -> [Entity] {
+        try await ensureLoadedFromDisk()
+        return snapshot().filter(predicate)
+    }
+    
+    public func contains(id: Identifier) async throws -> Bool {
+        try await ensureLoadedFromDisk()
+        return entitiesByID[id] != nil
+    }
+    
+    public func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool {
+        try await ensureLoadedFromDisk()
+        return snapshot().contains(where: predicate)
+    }
+    
+    public func count() async throws -> Int {
+        try await ensureLoadedFromDisk()
+        return entitiesByID.count
+    }
+    
+    public func count(where predicate: @Sendable (Entity) -> Bool) async throws -> Int {
+        try await ensureLoadedFromDisk()
+        return snapshot().filter(predicate).count
     }
 
     public func read(id: Identifier) async throws -> Entity {

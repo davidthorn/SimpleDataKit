@@ -421,6 +421,196 @@ struct SimpleStoreTests {
         }
         #expect(receivedUpdated)
     }
+    
+    @Test("upsert inserts then updates by id")
+    func upsertInsertsThenUpdatesByID() async throws {
+        let store = SimpleStore<SimpleStoreTestEntity>(fileURL: makeUniqueStoreFileURL())
+        let id = UUID()
+        let first = SimpleStoreTestEntity(id: id, name: "one", value: 1)
+        let second = SimpleStoreTestEntity(id: id, name: "two", value: 2)
+        
+        try await store.upsert(first)
+        try await store.upsert(second)
+        
+        let all = try await store.all()
+        #expect(all.count == 1)
+        #expect(all.first == second)
+    }
+    
+    @Test("contains and count reflect store state")
+    func containsAndCountReflectStoreState() async throws {
+        let store = SimpleStore<SimpleStoreTestEntity>(fileURL: makeUniqueStoreFileURL())
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "item", value: 1)
+        
+        let initialCount = try await store.count()
+        #expect(initialCount == 0)
+        #expect(try await store.contains(id: entity.id) == false)
+        
+        try await store.insert(entity)
+        #expect(try await store.count() == 1)
+        #expect(try await store.contains(id: entity.id))
+    }
+    
+    @Test("replaceAll overwrites existing state")
+    func replaceAllOverwritesExistingState() async throws {
+        let store = SimpleStore<SimpleStoreTestEntity>(fileURL: makeUniqueStoreFileURL())
+        try await store.insert(SimpleStoreTestEntity(id: UUID(), name: "old", value: 1))
+        
+        let replacement = [
+            SimpleStoreTestEntity(id: UUID(), name: "a", value: 10),
+            SimpleStoreTestEntity(id: UUID(), name: "b", value: 20)
+        ]
+        try await store.replaceAll(with: replacement)
+        
+        let all = try await store.all()
+        #expect(all == replacement)
+    }
+    
+    @Test("StoreFactory creates file-based store in configured directory")
+    func storeFactoryCreatesStoreInConfiguredDirectory() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SimpleStoreTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        
+        let factory = StoreFactory(directoryURL: directory)
+        let store = factory.makeStore(for: SimpleStoreTestEntity.self, fileName: "entities.json")
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "factory", value: 5)
+        try await store.insert(entity)
+        
+        let persistedURL = directory.appendingPathComponent("entities.json")
+        #expect(FileManager.default.fileExists(atPath: persistedURL.path))
+    }
+    
+    @Test("makeSimpleStore creates and persists in requested system directory")
+    func makeSimpleStoreCreatesAndPersistsInRequestedSystemDirectory() async throws {
+        let fileName = "simple-store-\(UUID().uuidString).json"
+        let store = try makeSimpleStore(for: SimpleStoreTestEntity.self, fileName: fileName, directory: .cachesDirectory)
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "global", value: 8)
+        try await store.insert(entity)
+        
+        let cachesURL = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let persistedURL = cachesURL.appendingPathComponent(fileName)
+        #expect(FileManager.default.fileExists(atPath: persistedURL.path))
+    }
+    
+    @Test("makeSimpleStore derives file name from model type")
+    func makeSimpleStoreDerivesFileNameFromModelType() async throws {
+        let store = try makeSimpleStore(for: SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "typed", value: 3)
+        try await store.insert(entity)
+        
+        let cachesURL = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let persistedURL = cachesURL.appendingPathComponent("SimpleStoreTestEntity.json")
+        #expect(FileManager.default.fileExists(atPath: persistedURL.path))
+    }
+    
+    @Test("global save and load APIs persist and read type records")
+    func globalSaveAndLoadAPIsPersistAndReadTypeRecords() async throws {
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "global-api", value: 11)
+        
+        try await save(entity, directory: .cachesDirectory)
+        
+        let loaded = try await load(SimpleStoreTestEntity.self, id: entity.id, directory: .cachesDirectory)
+        #expect(loaded == entity)
+        
+        let all = try await loadAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        #expect(all.contains(entity))
+    }
+    
+    @Test("global remove APIs delete records")
+    func globalRemoveAPIsDeleteRecords() async throws {
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let first = SimpleStoreTestEntity(id: UUID(), name: "one", value: 1)
+        let second = SimpleStoreTestEntity(id: UUID(), name: "two", value: 2)
+        
+        try await save(first, directory: .cachesDirectory)
+        try await save(second, directory: .cachesDirectory)
+        try await remove(SimpleStoreTestEntity.self, id: first.id, directory: .cachesDirectory)
+        
+        let remaining = try await loadAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        #expect(remaining.contains(second))
+        #expect(remaining.contains(first) == false)
+        
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let empty = try await loadAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        #expect(empty.isEmpty)
+    }
+    
+    @Test("global stream emits initial and updated snapshots")
+    func globalStreamEmitsInitialAndUpdatedSnapshots() async throws {
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let updates = try await stream(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        var iterator = updates.makeAsyncIterator()
+        
+        let initial = await iterator.next()
+        #expect(initial == [])
+        
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "stream-global", value: 12)
+        try await save(entity, directory: .cachesDirectory)
+        
+        var received = false
+        for _ in 0..<3 {
+            if let next = await iterator.next(), next.contains(entity) {
+                received = true
+                break
+            }
+        }
+        #expect(received)
+    }
+    
+    @Test("global stream with buffering policy emits snapshots")
+    func globalStreamWithBufferingPolicyEmitsSnapshots() async throws {
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        let updates = try await stream(
+            SimpleStoreTestEntity.self,
+            directory: .cachesDirectory,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        var iterator = updates.makeAsyncIterator()
+        
+        let initial = await iterator.next()
+        #expect(initial == [])
+        
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "stream-buffered", value: 13)
+        try await save(entity, directory: .cachesDirectory)
+        
+        var received = false
+        for _ in 0..<3 {
+            if let next = await iterator.next(), next.contains(entity) {
+                received = true
+                break
+            }
+        }
+        #expect(received)
+    }
+    
+    @Test("store query methods filter and predicate helpers")
+    func storeQueryMethodsFilterAndPredicateHelpers() async throws {
+        let store = SimpleStore<SimpleStoreTestEntity>(fileURL: makeUniqueStoreFileURL())
+        try await store.insert(SimpleStoreTestEntity(id: UUID(), name: "a", value: 1))
+        try await store.insert(SimpleStoreTestEntity(id: UUID(), name: "b", value: 2))
+        try await store.insert(SimpleStoreTestEntity(id: UUID(), name: "b", value: 3))
+        
+        let filtered = try await store.filter { $0.name == "b" }
+        #expect(filtered.count == 2)
+        #expect(try await store.contains(where: { $0.value == 3 }))
+        #expect(try await store.count(where: { $0.name == "b" }) == 2)
+    }
+    
+    @Test("global query helpers return filtered results")
+    func globalQueryHelpersReturnFilteredResults() async throws {
+        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await save(SimpleStoreTestEntity(id: UUID(), name: "x", value: 1), directory: .cachesDirectory)
+        try await save(SimpleStoreTestEntity(id: UUID(), name: "y", value: 2), directory: .cachesDirectory)
+        
+        let filtered = try await query(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.name == "y" })
+        #expect(filtered.count == 1)
+        #expect(try await contains(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.value == 2 }))
+        #expect(try await count(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.value >= 1 }) == 2)
+        let first = try await loadFirst(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.name == "x" })
+        #expect(first?.name == "x")
+    }
 }
 
 private func makeUniqueStoreFileURL() -> URL {
