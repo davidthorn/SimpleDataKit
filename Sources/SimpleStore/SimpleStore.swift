@@ -16,6 +16,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     private let decoder: JSONDecoder
 
     private var entitiesByID: [Identifier: Entity]
+    private var orderedIDs: [Identifier]
     private var hasLoadedFromDisk: Bool
     private var continuations: [UUID: AsyncStream<[Entity]>.Continuation]
 
@@ -30,6 +31,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         self.encoder = encoder
         self.decoder = decoder
         self.entitiesByID = [:]
+        self.orderedIDs = []
         self.hasLoadedFromDisk = false
         self.continuations = [:]
     }
@@ -54,6 +56,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         }
 
         entitiesByID[entity.id] = entity
+        orderedIDs.append(entity.id)
         try persistToDisk()
         broadcastSnapshot()
     }
@@ -74,6 +77,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         guard entitiesByID.removeValue(forKey: id) != nil else {
             throw SimpleStoreError.notFound
         }
+        orderedIDs.removeAll(where: { $0 == id })
 
         try persistToDisk()
         broadcastSnapshot()
@@ -91,6 +95,8 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         for id in ids {
             entitiesByID.removeValue(forKey: id)
         }
+        let idsToDelete = Set(ids)
+        orderedIDs.removeAll(where: { idsToDelete.contains($0) })
 
         try persistToDisk()
         broadcastSnapshot()
@@ -99,6 +105,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func deleteAll() async throws {
         try await ensureLoadedFromDisk()
         entitiesByID.removeAll(keepingCapacity: false)
+        orderedIDs.removeAll(keepingCapacity: false)
         try persistToDisk()
         broadcastSnapshot()
     }
@@ -106,6 +113,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func loadAll() async throws -> [Entity] {
         let loaded = try readAllFromDisk()
         entitiesByID = Dictionary(uniqueKeysWithValues: loaded.map { ($0.id, $0) })
+        orderedIDs = loaded.map { $0.id }
         hasLoadedFromDisk = true
         let all = snapshot()
         broadcastSnapshot()
@@ -142,7 +150,14 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     }
 
     private func snapshot() -> [Entity] {
-        Array(entitiesByID.values)
+        var result: [Entity] = []
+        result.reserveCapacity(orderedIDs.count)
+        for id in orderedIDs {
+            if let entity = entitiesByID[id] {
+                result.append(entity)
+            }
+        }
+        return result
     }
 
     private func broadcastSnapshot() {
