@@ -112,7 +112,7 @@
 			mainGroup = 448EA22D2F4708CF00D026EB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../../../../Volumes/SSD1TB/Projects/github-davidthorn/SimpleStore" */,
+				448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 448EA2372F4708D000D026EB /* Products */;
@@ -364,9 +364,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../../../../Volumes/SSD1TB/Projects/github-davidthorn/SimpleStore" */ = {
+		448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../../Volumes/SSD1TB/Projects/github-davidthorn/SimpleStore";
+			relativePath = ../SimpleDataKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -377,7 +377,7 @@
 		};
 		448EA2512F470F4300D026EB /* SimpleStoreUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../../../../Volumes/SSD1TB/Projects/github-davidthorn/SimpleStore" */;
+			package = 448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */;
 			productName = SimpleStoreUI;
 		};
 /* End XCSwiftPackageProductDependency section */
