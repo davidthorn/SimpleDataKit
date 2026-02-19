@@ -36,9 +36,11 @@ struct StartHereView: View {
 
                     Text(snippet)
                         .font(.system(.footnote, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(Color.gray.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()

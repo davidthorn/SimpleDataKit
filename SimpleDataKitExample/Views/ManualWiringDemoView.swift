@@ -28,8 +28,11 @@ struct ManualWiringDemoView: View {
                 Button("Insert via Store") {
                     Task { try await insertItem() }
                 }
-                Button("Clear All", role: .destructive) {
-                    Task { try await clearAll() }
+                Button("Clear List", role: .destructive) {
+                    items = []
+                }
+                Button("Delete All", role: .destructive) {
+                    Task { try await deleteAll() }
                 }
             }
 
@@ -74,7 +77,7 @@ struct ManualWiringDemoView: View {
         items = try await store.all()
     }
 
-    private func clearAll() async throws {
+    private func deleteAll() async throws {
         let store = try await resolveGlobalStore(for: ManualItem.self, directory: directory)
         try await store.deleteAll()
         items = []

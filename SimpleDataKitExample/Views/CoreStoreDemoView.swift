@@ -32,8 +32,11 @@ struct CoreStoreDemoView: View {
                 Button("Upsert") {
                     Task { try await upsertItem() }
                 }
-                Button("Clear All", role: .destructive) {
-                    Task { try await clearAll() }
+                Button("Clear List", role: .destructive) {
+                    items.removeAll()
+                }
+                Button("Delete All", role: .destructive) {
+                    Task { try await deleteAll() }
                 }
             }
 
@@ -84,7 +87,7 @@ struct CoreStoreDemoView: View {
         items = try await store.all()
     }
 
-    private func clearAll() async throws {
+    private func deleteAll() async throws {
         let store = try makeStore()
         try await store.deleteAll()
         items = []
