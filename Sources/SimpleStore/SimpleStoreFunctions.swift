@@ -30,7 +30,7 @@ actor GlobalStoreRegistry {
     }
 }
 
-func resolveGlobalStore<Model: Codable & Identifiable & Sendable & Hashable>(
+public func resolveGlobalStore<Model: Codable & Identifiable & Sendable & Hashable>(
     for type: Model.Type,
     directory: FileManager.SearchPathDirectory
 ) async throws -> SimpleStore<Model> where Model.ID: Hashable & Sendable {
