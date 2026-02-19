@@ -20,6 +20,8 @@ public protocol SimpleStoreProtocol: Actor, Sendable {
 
     /// Inserts a new model value.
     /// - Parameter entity: The model to insert.
+    /// - Throws: `SimpleStore.StoreError.alreadyExists(id:)` with `entity.id`
+    ///   when a model with the same identifier already exists.
     func insert(_ entity: Entity) async throws
 
     /// Updates an existing model value.
@@ -47,7 +49,8 @@ public protocol SimpleStoreProtocol: Actor, Sendable {
     /// Reads a model value by identifier.
     /// - Parameter id: The identifier to read.
     /// - Returns: The model if found.
-    /// - Throws: `SimpleStoreError.notFound` when the model does not exist.
+    /// - Throws: `SimpleStore.StoreError.notFound(id:)` with the requested `id`
+    ///   when the model does not exist.
     func read(id: Identifier) async throws -> Entity
 
     /// Returns the first model value matching the predicate.

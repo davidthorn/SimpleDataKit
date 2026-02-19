@@ -34,9 +34,9 @@ struct SimpleStoreTests {
         do {
             try await store.insert(entity)
             Issue.record("Expected .alreadyExists")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .alreadyExists:
+            case .alreadyExists(id: entity.id):
                 break
             default:
                 Issue.record("Expected .alreadyExists, got \(String(describing: error))")
@@ -68,9 +68,9 @@ struct SimpleStoreTests {
         do {
             try await store.update(entity)
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: entity.id):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")
@@ -90,9 +90,9 @@ struct SimpleStoreTests {
         do {
             _ = try await store.read(id: entity.id)
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: entity.id):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")
@@ -108,9 +108,9 @@ struct SimpleStoreTests {
         do {
             try await store.delete(id: UUID())
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: _):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")
@@ -148,9 +148,9 @@ struct SimpleStoreTests {
         do {
             try await store.delete(ids: [existing.id, missingID])
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: missingID):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")
@@ -233,9 +233,9 @@ struct SimpleStoreTests {
         do {
             _ = try await store.read(id: UUID())
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: _):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")
@@ -304,7 +304,7 @@ struct SimpleStoreTests {
         do {
             _ = try await store.loadAll()
             Issue.record("Expected .decodingFailed")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
             case .decodingFailed:
                 break
@@ -323,7 +323,7 @@ struct SimpleStoreTests {
         do {
             try await store.insert(invalid)
             Issue.record("Expected .encodingFailed")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
             case .encodingFailed:
                 break
@@ -348,7 +348,7 @@ struct SimpleStoreTests {
         do {
             try await store.insert(SimpleStoreTestEntity(id: UUID(), name: "a", value: 1))
             Issue.record("Expected .fileSystemOperationFailed")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
             case .fileSystemOperationFailed:
                 break
@@ -372,9 +372,9 @@ struct SimpleStoreTests {
         do {
             _ = try await erased.read(id: entity.id)
             Issue.record("Expected .notFound")
-        } catch let error as SimpleStoreError {
+        } catch let error as SimpleStore<SimpleStoreTestEntity>.StoreError {
             switch error {
-            case .notFound:
+            case .notFound(id: entity.id):
                 break
             default:
                 Issue.record("Expected .notFound, got \(String(describing: error))")

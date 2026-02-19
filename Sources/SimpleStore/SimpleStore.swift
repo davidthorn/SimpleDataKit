@@ -9,6 +9,29 @@ import Foundation
 
 public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: SimpleStoreProtocol where Entity.ID: Hashable & Sendable {
     public typealias Identifier = Entity.ID
+    
+    /// Errors thrown by `SimpleStore`.
+    public enum StoreError: Error {
+        /// The requested model does not exist.
+        /// - Parameter id: The identifier that was requested.
+        case notFound(id: Identifier)
+        
+        /// The model already exists and cannot be inserted again.
+        /// - Parameter id: The identifier that already exists.
+        case alreadyExists(id: Identifier)
+        
+        /// The persisted data could not be encoded.
+        case encodingFailed
+        
+        /// The persisted data could not be decoded.
+        case decodingFailed
+        
+        /// The file system operation failed.
+        case fileSystemOperationFailed
+        
+        /// An uncategorized error occurred.
+        case unknown(error: Error)
+    }
 
     private let fileURL: URL
     private let fileManager: FileManager
@@ -52,7 +75,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func insert(_ entity: Entity) async throws {
         try await ensureLoadedFromDisk()
         guard entitiesByID[entity.id] == nil else {
-            throw SimpleStoreError.alreadyExists
+            throw StoreError.alreadyExists(id: entity.id)
         }
 
         entitiesByID[entity.id] = entity
@@ -64,7 +87,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func update(_ entity: Entity) async throws {
         try await ensureLoadedFromDisk()
         guard entitiesByID[entity.id] != nil else {
-            throw SimpleStoreError.notFound
+            throw StoreError.notFound(id: entity.id)
         }
 
         entitiesByID[entity.id] = entity
@@ -75,9 +98,11 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func delete(id: Identifier) async throws {
         try await ensureLoadedFromDisk()
         guard entitiesByID.removeValue(forKey: id) != nil else {
-            throw SimpleStoreError.notFound
+            throw StoreError.notFound(id: id)
         }
-        orderedIDs.removeAll(where: { $0 == id })
+        if let index = orderedIDs.firstIndex(of: id) {
+            orderedIDs.remove(at: index)
+        }
 
         try persistToDisk()
         broadcastSnapshot()
@@ -88,7 +113,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
 
         for id in ids {
             guard entitiesByID[id] != nil else {
-                throw SimpleStoreError.notFound
+                throw StoreError.notFound(id: id)
             }
         }
 
@@ -128,7 +153,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
     public func read(id: Identifier) async throws -> Entity {
         try await ensureLoadedFromDisk()
         guard let entity = entitiesByID[id] else {
-            throw SimpleStoreError.notFound
+            throw StoreError.notFound(id: id)
         }
         return entity
     }
@@ -173,7 +198,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
             try ensureStoreDirectoryExists()
             try data.write(to: fileURL, options: .atomic)
         } catch is EncodingError {
-            throw SimpleStoreError.encodingFailed
+            throw StoreError.encodingFailed
         } catch {
             throw mapUnknown(error)
         }
@@ -192,7 +217,7 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
 
             return try decoder.decode([Entity].self, from: data)
         } catch is DecodingError {
-            throw SimpleStoreError.decodingFailed
+            throw StoreError.decodingFailed
         } catch {
             throw mapUnknown(error)
         }
@@ -204,13 +229,13 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
             do {
                 try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
             } catch {
-                throw SimpleStoreError.fileSystemOperationFailed
+                throw StoreError.fileSystemOperationFailed
             }
         }
     }
 
-    private func mapUnknown(_ error: Error) -> SimpleStoreError {
-        if let simpleStoreError = error as? SimpleStoreError {
+    private func mapUnknown(_ error: Error) -> StoreError {
+        if let simpleStoreError = error as? StoreError {
             return simpleStoreError
         }
         return .unknown(error: error)
