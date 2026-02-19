@@ -7,7 +7,7 @@
 
 import Foundation
 
-private actor GlobalStoreRegistry {
+actor GlobalStoreRegistry {
     static let shared = GlobalStoreRegistry()
     
     private var stores: [String: AnyObject]
@@ -30,7 +30,7 @@ private actor GlobalStoreRegistry {
     }
 }
 
-private func resolveGlobalStore<Model: Codable & Identifiable & Sendable & Hashable>(
+func resolveGlobalStore<Model: Codable & Identifiable & Sendable & Hashable>(
     for type: Model.Type,
     directory: FileManager.SearchPathDirectory
 ) async throws -> SimpleStore<Model> where Model.ID: Hashable & Sendable {
@@ -54,12 +54,22 @@ public func save<Model: Codable & Identifiable & Sendable & Hashable>(
 ///   - type: The model type.
 ///   - directory: The base directory used for the store file.
 /// - Returns: All persisted models.
+@discardableResult
 public func loadAll<Model: Codable & Identifiable & Sendable & Hashable>(
     _ type: Model.Type,
     directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
 ) async throws -> [Model] where Model.ID: Hashable & Sendable {
     let store = try await resolveGlobalStore(for: type, directory: directory)
     return try await store.all()
+}
+
+/// Returns the total number of models in a type-derived store.
+public func count<Model: Codable & Identifiable & Sendable & Hashable>(
+    _ type: Model.Type,
+    directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
+) async throws -> Int where Model.ID: Hashable & Sendable {
+    let store = try await resolveGlobalStore(for: type, directory: directory)
+    return try await store.count()
 }
 
 /// Loads all models matching a predicate from a type-derived store.

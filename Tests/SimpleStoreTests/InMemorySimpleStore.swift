@@ -8,6 +8,11 @@
 import Foundation
 @testable import SimpleStore
 
+private enum InMemorySimpleStoreError: Error {
+    case notFound
+    case alreadyExists
+}
+
 actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: SimpleStoreProtocol where Entity.ID: Hashable & Sendable {
     typealias Identifier = Entity.ID
 
@@ -40,7 +45,7 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
 
     func insert(_ entity: Entity) async throws {
         if byID[entity.id] != nil {
-            throw SimpleStoreError.alreadyExists
+            throw InMemorySimpleStoreError.alreadyExists
         }
         byID[entity.id] = entity
         publish()
@@ -53,7 +58,7 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
 
     func update(_ entity: Entity) async throws {
         if byID[entity.id] == nil {
-            throw SimpleStoreError.notFound
+            throw InMemorySimpleStoreError.notFound
         }
         byID[entity.id] = entity
         publish()
@@ -61,14 +66,14 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
 
     func delete(id: Identifier) async throws {
         if byID.removeValue(forKey: id) == nil {
-            throw SimpleStoreError.notFound
+            throw InMemorySimpleStoreError.notFound
         }
         publish()
     }
 
     func delete(ids: [Identifier]) async throws {
         for id in ids where byID[id] == nil {
-            throw SimpleStoreError.notFound
+            throw InMemorySimpleStoreError.notFound
         }
         for id in ids {
             byID.removeValue(forKey: id)
@@ -116,7 +121,7 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
 
     func read(id: Identifier) async throws -> Entity {
         guard let entity = byID[id] else {
-            throw SimpleStoreError.notFound
+            throw InMemorySimpleStoreError.notFound
         }
         return entity
     }

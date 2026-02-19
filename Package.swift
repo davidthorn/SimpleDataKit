@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "SimpleStore",
+    name: "SimpleDataKit",
     platforms: [
         .iOS(.v17),
         .macOS(.v10_15),
@@ -18,12 +18,20 @@ let package = Package(
             name: "SimpleStore",
             targets: ["SimpleStore"]
         ),
+        .library(
+            name: "SimpleStoreUI",
+            targets: ["SimpleStoreUI"]
+        ),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "SimpleStore"
+        ),
+        .target(
+            name: "SimpleStoreUI",
+            dependencies: ["SimpleStore"]
         ),
         .testTarget(
             name: "SimpleStoreTests",
