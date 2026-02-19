@@ -46,6 +46,33 @@ Core + UI:
 .product(name: "SimpleStoreUI", package: "SimpleDataKit")
 ```
 
+## Example Project (Included)
+
+This repository includes a full SwiftUI demo app:
+
+- `SimpleDataKitExample.xcodeproj`
+- Source in `SimpleDataKitExample/`
+
+Use it as a guided walkthrough for junior developers. It shows multiple ways to use the package without heavy architecture.
+
+How to run:
+
+1. Open `SimpleDataKitExample.xcodeproj` in Xcode.
+2. Select the `SimpleStoreExample` scheme.
+3. Run on an iOS Simulator.
+
+What the example screens teach:
+
+- `StartHereView`: basic orientation and where to begin.
+- `CoreStoreDemoView`: direct `SimpleStore` usage (`insert`, `update`, `read`, `delete`).
+- `GlobalFunctionsDemoView`: persistence with global functions (`save`, `loadAll`, `remove`).
+- `PersistableDemoView`: model-driven API via `Persistable`.
+- `ListDemoView`: `SimpleStoreList` usage for minimal UI boilerplate.
+- `StackDemoView`: `SimpleStoreStack` + `SimpleStoreStackRow` usage.
+- `ManualWiringDemoView`: explicit loading + stream wiring, for understanding the internals.
+
+The example intentionally favors clear, local-in-view code so beginners can learn usage first, then adopt more architecture over time.
+
 ## Model Requirements
 
 Your model must conform to:
