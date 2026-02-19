@@ -107,6 +107,10 @@ actor InMemorySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>:
         byID[id] != nil
     }
     
+    func exists(id: Identifier) async throws -> Bool {
+        byID[id] != nil
+    }
+    
     func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool {
         Array(byID.values).contains(where: predicate)
     }

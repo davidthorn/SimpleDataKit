@@ -127,6 +127,16 @@ public func load<Model: Codable & Identifiable & Sendable & Hashable>(
     return try await store.read(id: id)
 }
 
+/// Returns whether a model with `id` exists in a type-derived store.
+public func exists<Model: Codable & Identifiable & Sendable & Hashable>(
+    _ type: Model.Type,
+    id: Model.ID,
+    directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
+) async throws -> Bool where Model.ID: Hashable & Sendable {
+    let store = try await resolveGlobalStore(for: type, directory: directory)
+    return try await store.exists(id: id)
+}
+
 /// Removes a model by identifier from a type-derived store.
 /// - Parameters:
 ///   - type: The model type.

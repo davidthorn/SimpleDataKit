@@ -175,6 +175,12 @@ try await remove(Todo.self, id: someID)
 try await removeAll(Todo.self)
 ```
 
+### Exists API
+
+```swift
+let alreadyStored = try await exists(Todo.self, id: someID)
+```
+
 ### Count APIs
 
 ```swift
@@ -200,6 +206,11 @@ let first = try await loadFirst(Todo.self) { $0.done }
 let hasDone = try await contains(Todo.self) { $0.done }
 let doneCount = try await count(Todo.self) { $0.done }
 ```
+
+`exists` vs `contains`:
+
+- `exists(Todo.self, id: ...)`: exact ID existence check
+- `contains(Todo.self) { ... }`: predicate-based check
 
 ## Live Updates with AsyncStream
 
@@ -275,6 +286,47 @@ let erased = AnySimpleStore(fileStore)
 
 try await erased.insert(Todo(title: "Type erased"))
 let todos = try await erased.all()
+```
+
+## Persistable Model API
+
+If your model adopts `Persistable`, you can call persistence APIs directly on the model type/instance.
+
+```swift
+import Foundation
+import SimpleStore
+
+public struct Todo: Persistable {
+    public let id: UUID
+    public var title: String
+    public var done: Bool
+
+    public init(id: UUID = UUID(), title: String, done: Bool = false) {
+        self.id = id
+        self.title = title
+        self.done = done
+    }
+}
+```
+
+Instance-level:
+
+```swift
+let todo = Todo(title: "Ship app")
+
+try await todo.persist()
+let saved = try await todo.exists()
+try await todo.delete()
+```
+
+Type-level:
+
+```swift
+let all = try await Todo.loadAll()
+let first = try await Todo.loadFirst { $0.done }
+let hasDone = try await Todo.contains { $0.done }
+let doneCount = try await Todo.count { $0.done }
+let updates = try await Todo.stream()
 ```
 
 ## SwiftUI (`SimpleStoreUI`)

@@ -22,6 +22,7 @@ public actor AnySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable
     private let loadAllOperation: @Sendable () async throws -> [Entity]
     private let allOperation: @Sendable () async throws -> [Entity]
     private let containsOperation: @Sendable (Identifier) async throws -> Bool
+    private let existsOperation: @Sendable (Identifier) async throws -> Bool
     private let countOperation: @Sendable () async throws -> Int
     private let readByIDOperation: @Sendable (Identifier) async throws -> Entity
 
@@ -68,6 +69,9 @@ public actor AnySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable
         }
         self.containsOperation = { id in
             try await base.contains(id: id)
+        }
+        self.existsOperation = { id in
+            try await base.exists(id: id)
         }
         self.countOperation = {
             try await base.count()
@@ -130,6 +134,10 @@ public actor AnySimpleStore<Entity: Codable & Identifiable & Sendable & Hashable
     
     public func contains(id: Identifier) async throws -> Bool {
         try await containsOperation(id)
+    }
+    
+    public func exists(id: Identifier) async throws -> Bool {
+        try await existsOperation(id)
     }
     
     public func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool {

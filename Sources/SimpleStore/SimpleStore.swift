@@ -204,6 +204,10 @@ public actor SimpleStore<Entity: Codable & Identifiable & Sendable & Hashable>: 
         return entitiesByID[id] != nil
     }
     
+    public func exists(id: Identifier) async throws -> Bool {
+        try await contains(id: id)
+    }
+    
     public func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool {
         try await ensureLoadedFromDisk()
         return snapshot().contains(where: predicate)

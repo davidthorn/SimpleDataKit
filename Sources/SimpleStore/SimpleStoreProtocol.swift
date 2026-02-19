@@ -68,6 +68,10 @@ public protocol SimpleStoreProtocol: Actor, Sendable {
     /// - Parameter id: The identifier to check.
     func contains(id: Identifier) async throws -> Bool
     
+    /// Returns whether a model with `id` exists.
+    /// - Parameter id: The identifier to check.
+    func exists(id: Identifier) async throws -> Bool
+    
     /// Returns whether any model matches a predicate.
     /// - Parameter predicate: The predicate to evaluate.
     func contains(where predicate: @Sendable (Entity) -> Bool) async throws -> Bool
