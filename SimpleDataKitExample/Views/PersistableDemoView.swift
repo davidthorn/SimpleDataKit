@@ -33,7 +33,7 @@ struct PersistableDemoView: View {
                     items = []
                 }
                 Button("Delete All", role: .destructive) {
-                    Task { try await deleteAll() }
+                    Task { try await deleteAllItems() }
                 }
             }
 
@@ -71,8 +71,8 @@ struct PersistableDemoView: View {
         items = try await PersistableItem.loadAll(directory: directory)
     }
 
-    private func deleteAll() async throws {
-        try await PersistableItem.removeAll(directory: directory)
+    private func deleteAllItems() async throws {
+        try await PersistableItem.deleteAll(directory: directory)
         items = []
     }
 }

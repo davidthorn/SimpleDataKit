@@ -1,0 +1,15 @@
+{
+  "originHash" : "ee62a4026d8765d4e14d3bc05ea72f52bef68899d5353ea33a6aaba56b0d591b",
+  "pins" : [
+    {
+      "identity" : "simpledatakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/davidthorn/SimpleDataKit.git",
+      "state" : {
+        "revision" : "10f60ec554c4a723111c4d97c11229c692fcec73",
+        "version" : "0.2.0"
+      }
+    }
+  ],
+  "version" : 3
+}

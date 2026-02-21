@@ -32,7 +32,7 @@ struct GlobalFunctionsDemoView: View {
                     items = []
                 }
                 Button("Delete All", role: .destructive) {
-                    Task { try await deleteAll() }
+                    Task { try await deleteAllItems() }
                 }
             }
 
@@ -69,8 +69,8 @@ struct GlobalFunctionsDemoView: View {
         items = try await loadAll(GlobalItem.self, directory: directory)
     }
 
-    private func deleteAll() async throws {
-        try await removeAll(GlobalItem.self, directory: directory)
+    private func deleteAllItems() async throws {
+        try await deleteAll(GlobalItem.self, directory: directory)
         items = []
     }
 }

@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4447A7292F499C7500CDDDFD /* SimpleStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4447A7282F499C7500CDDDFD /* SimpleStore */; };
+		4447A72B2F499C7500CDDDFD /* SimpleStoreUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4447A72A2F499C7500CDDDFD /* SimpleStoreUI */; };
 		448EA2492F47090100D026EB /* SimpleStore in Frameworks */ = {isa = PBXBuildFile; productRef = 448EA2482F47090100D026EB /* SimpleStore */; };
-		448EA2522F470F4300D026EB /* SimpleStoreUI in Frameworks */ = {isa = PBXBuildFile; productRef = 448EA2512F470F4300D026EB /* SimpleStoreUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,8 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				448EA2522F470F4300D026EB /* SimpleStoreUI in Frameworks */,
+				4447A7292F499C7500CDDDFD /* SimpleStore in Frameworks */,
 				448EA2492F47090100D026EB /* SimpleStore in Frameworks */,
+				4447A72B2F499C7500CDDDFD /* SimpleStoreUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -81,7 +83,8 @@
 			name = SimpleDataKitExample;
 			packageProductDependencies = (
 				448EA2482F47090100D026EB /* SimpleStore */,
-				448EA2512F470F4300D026EB /* SimpleStoreUI */,
+				4447A7282F499C7500CDDDFD /* SimpleStore */,
+				4447A72A2F499C7500CDDDFD /* SimpleStoreUI */,
 			);
 			productName = SimpleDataKitExample;
 			productReference = 448EA2362F4708D000D026EB /* SimpleDataKitExample.app */;
@@ -112,7 +115,7 @@
 			mainGroup = 448EA22D2F4708CF00D026EB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */,
+				4447A7272F499C7500CDDDFD /* XCRemoteSwiftPackageReference "SimpleDataKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 448EA2372F4708D000D026EB /* Products */;
@@ -363,22 +366,31 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../SimpleDataKit;
+/* Begin XCRemoteSwiftPackageReference section */
+		4447A7272F499C7500CDDDFD /* XCRemoteSwiftPackageReference "SimpleDataKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/davidthorn/SimpleDataKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.0;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4447A7282F499C7500CDDDFD /* SimpleStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4447A7272F499C7500CDDDFD /* XCRemoteSwiftPackageReference "SimpleDataKit" */;
+			productName = SimpleStore;
+		};
+		4447A72A2F499C7500CDDDFD /* SimpleStoreUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4447A7272F499C7500CDDDFD /* XCRemoteSwiftPackageReference "SimpleDataKit" */;
+			productName = SimpleStoreUI;
+		};
 		448EA2482F47090100D026EB /* SimpleStore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SimpleStore;
-		};
-		448EA2512F470F4300D026EB /* SimpleStoreUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 448EA2472F47090100D026EB /* XCLocalSwiftPackageReference "../SimpleDataKit" */;
-			productName = SimpleStoreUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
