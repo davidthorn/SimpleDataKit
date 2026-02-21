@@ -506,7 +506,7 @@ struct SimpleStoreTests {
     
     @Test("global save and load APIs persist and read type records")
     func globalSaveAndLoadAPIsPersistAndReadTypeRecords() async throws {
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         let entity = SimpleStoreTestEntity(id: UUID(), name: "global-api", value: 11)
         
         try await save(entity, directory: .cachesDirectory)
@@ -520,26 +520,26 @@ struct SimpleStoreTests {
     
     @Test("global remove APIs delete records")
     func globalRemoveAPIsDeleteRecords() async throws {
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         let first = SimpleStoreTestEntity(id: UUID(), name: "one", value: 1)
         let second = SimpleStoreTestEntity(id: UUID(), name: "two", value: 2)
         
         try await save(first, directory: .cachesDirectory)
         try await save(second, directory: .cachesDirectory)
-        try await remove(SimpleStoreTestEntity.self, id: first.id, directory: .cachesDirectory)
+        try await delete(SimpleStoreTestEntity.self, id: first.id, directory: .cachesDirectory)
         
         let remaining = try await loadAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         #expect(remaining.contains(second))
         #expect(remaining.contains(first) == false)
         
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         let empty = try await loadAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         #expect(empty.isEmpty)
     }
     
     @Test("global stream emits initial and updated snapshots")
     func globalStreamEmitsInitialAndUpdatedSnapshots() async throws {
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         let updates = try await stream(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         var iterator = updates.makeAsyncIterator()
         
@@ -561,7 +561,7 @@ struct SimpleStoreTests {
     
     @Test("global stream with buffering policy emits snapshots")
     func globalStreamWithBufferingPolicyEmitsSnapshots() async throws {
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         let updates = try await stream(
             SimpleStoreTestEntity.self,
             directory: .cachesDirectory,
@@ -600,7 +600,7 @@ struct SimpleStoreTests {
     
     @Test("global query helpers return filtered results")
     func globalQueryHelpersReturnFilteredResults() async throws {
-        try await removeAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .cachesDirectory)
         try await save(SimpleStoreTestEntity(id: UUID(), name: "x", value: 1), directory: .cachesDirectory)
         try await save(SimpleStoreTestEntity(id: UUID(), name: "y", value: 2), directory: .cachesDirectory)
         
@@ -610,6 +610,132 @@ struct SimpleStoreTests {
         #expect(try await count(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.value >= 1 }) == 2)
         let first = try await loadFirst(SimpleStoreTestEntity.self, directory: .cachesDirectory, where: { $0.name == "x" })
         #expect(first?.name == "x")
+    }
+    
+    @Test("registered global store is used by global functions")
+    func registeredGlobalStoreIsUsedByGlobalFunctions() async throws {
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+        let memory = InMemorySimpleStore<SimpleStoreTestEntity>()
+        await registerGlobalStore(memory, for: SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+        
+        let entity = SimpleStoreTestEntity(id: UUID(), name: "registered", value: 21)
+        try await save(entity, directory: .downloadsDirectory)
+        
+        let loaded = try await load(SimpleStoreTestEntity.self, id: entity.id, directory: .downloadsDirectory)
+        #expect(loaded == entity)
+        #expect(try await memory.count() == 1)
+        
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+    }
+    
+    @Test("unregister global store falls back to default file-backed store")
+    func unregisterGlobalStoreFallsBackToDefaultStore() async throws {
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .moviesDirectory)
+        let memory = InMemorySimpleStore<SimpleStoreTestEntity>()
+        await registerGlobalStore(memory, for: SimpleStoreTestEntity.self, directory: .moviesDirectory)
+        
+        let memoryEntity = SimpleStoreTestEntity(id: UUID(), name: "memory-only", value: 31)
+        try await save(memoryEntity, directory: .moviesDirectory)
+        #expect(try await memory.count() == 1)
+        
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .moviesDirectory)
+        
+        let fileEntity = SimpleStoreTestEntity(id: UUID(), name: "file-backed", value: 32)
+        try await save(fileEntity, directory: .moviesDirectory)
+        #expect(try await memory.count() == 1)
+        
+        let all = try await loadAll(SimpleStoreTestEntity.self, directory: .moviesDirectory)
+        #expect(all.contains(fileEntity))
+        #expect(all.contains(memoryEntity) == false)
+        
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .moviesDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .moviesDirectory)
+    }
+    
+    @Test("global store registration is isolated by directory key")
+    func globalStoreRegistrationIsIsolatedByDirectoryKey() async throws {
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .desktopDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+        
+        let desktopMemory = InMemorySimpleStore<SimpleStoreTestEntity>()
+        await registerGlobalStore(desktopMemory, for: SimpleStoreTestEntity.self, directory: .desktopDirectory)
+        
+        let desktopEntity = SimpleStoreTestEntity(id: UUID(), name: "desktop", value: 41)
+        try await save(desktopEntity, directory: .desktopDirectory)
+        #expect(try await desktopMemory.count() == 1)
+        
+        let downloadsEntity = SimpleStoreTestEntity(id: UUID(), name: "downloads", value: 42)
+        try await save(downloadsEntity, directory: .downloadsDirectory)
+        #expect(try await desktopMemory.count() == 1)
+        
+        let downloadsAll = try await loadAll(SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+        #expect(downloadsAll.contains(downloadsEntity))
+        #expect(downloadsAll.contains(desktopEntity) == false)
+        
+        try await deleteAll(SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .desktopDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .downloadsDirectory)
+    }
+    
+    @Test("global store registration is isolated by name key")
+    func globalStoreRegistrationIsIsolatedByNameKey() async throws {
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "primary")
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "archive")
+        
+        let primaryStore = InMemorySimpleStore<SimpleStoreTestEntity>()
+        let archiveStore = InMemorySimpleStore<SimpleStoreTestEntity>()
+        await registerGlobalStore(primaryStore, for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "primary")
+        await registerGlobalStore(archiveStore, for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "archive")
+        
+        let primaryEntity = SimpleStoreTestEntity(id: UUID(), name: "primary", value: 51)
+        let archiveEntity = SimpleStoreTestEntity(id: UUID(), name: "archive", value: 52)
+        let resolvedPrimary = try await resolveGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "primary")
+        let resolvedArchive = try await resolveGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "archive")
+        try await resolvedPrimary.upsert(primaryEntity)
+        try await resolvedArchive.upsert(archiveEntity)
+        
+        #expect(try await primaryStore.count() == 1)
+        #expect(try await archiveStore.count() == 1)
+        
+        let primaryAll = try await resolvedPrimary.all()
+        let archiveAll = try await resolvedArchive.all()
+        #expect(primaryAll.contains(primaryEntity))
+        #expect(primaryAll.contains(archiveEntity) == false)
+        #expect(archiveAll.contains(archiveEntity))
+        #expect(archiveAll.contains(primaryEntity) == false)
+        
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "primary")
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .musicDirectory, name: "archive")
+    }
+    
+    @Test("default and named global stores are isolated")
+    func defaultAndNamedGlobalStoresAreIsolated() async throws {
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .picturesDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .picturesDirectory, name: "named")
+        
+        let defaultStore = InMemorySimpleStore<SimpleStoreTestEntity>()
+        let namedStore = InMemorySimpleStore<SimpleStoreTestEntity>()
+        await registerGlobalStore(defaultStore, for: SimpleStoreTestEntity.self, directory: .picturesDirectory)
+        await registerGlobalStore(namedStore, for: SimpleStoreTestEntity.self, directory: .picturesDirectory, name: "named")
+        
+        let defaultEntity = SimpleStoreTestEntity(id: UUID(), name: "default", value: 61)
+        let namedEntity = SimpleStoreTestEntity(id: UUID(), name: "named", value: 62)
+        try await save(defaultEntity, directory: .picturesDirectory)
+        let resolvedNamed = try await resolveGlobalStore(for: SimpleStoreTestEntity.self, directory: .picturesDirectory, name: "named")
+        try await resolvedNamed.upsert(namedEntity)
+        
+        #expect(try await defaultStore.count() == 1)
+        #expect(try await namedStore.count() == 1)
+        
+        let defaultAll = try await loadAll(SimpleStoreTestEntity.self, directory: .picturesDirectory)
+        let namedAll = try await resolvedNamed.all()
+        #expect(defaultAll.contains(defaultEntity))
+        #expect(defaultAll.contains(namedEntity) == false)
+        #expect(namedAll.contains(namedEntity))
+        #expect(namedAll.contains(defaultEntity) == false)
+        
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .picturesDirectory)
+        await unregisterGlobalStore(for: SimpleStoreTestEntity.self, directory: .picturesDirectory, name: "named")
     }
 }
 

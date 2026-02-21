@@ -1,88 +1,92 @@
 # SimpleDataKit
 
-`SimpleDataKit` is a Swift package that contains two libraries:
+`SimpleDataKit` helps you ship local-data Swift apps quickly.
 
-- `SimpleStore`: actor-based, file persistence for `Codable & Identifiable & Sendable & Hashable` models
-- `SimpleStoreUI`: optional SwiftUI helpers built on top of `SimpleStore`
+It provides two libraries:
+- `SimpleStore`: actor-based persistence for `Codable & Identifiable & Sendable & Hashable` models
+- `SimpleStoreUI`: SwiftUI helpers for loading, streaming, and common CRUD actions
 
-Together they provide simple CRUD APIs, live updates via `AsyncStream`, and reusable UI abstractions.
+If you are new to architecture, this README is written so you can still build a working app first.
 
-## Why Use SimpleDataKit?
+## Project Philosophy
 
-If you are a junior developer, this package gives you:
+SimpleDataKit is designed to help junior developers learn by shipping.
 
-- A simple way to persist app data without setting up a full database
-- Safer concurrency by default (`actor`-based store)
-- Predictable behavior with explicit reads/writes
-- Live UI updates using streams
-- Optional UI abstractions so you can start with less boilerplate
+The intended learning path is:
+1. Get a proof-of-concept working quickly with minimal friction.
+2. Understand persistence and UI streaming in small, local examples.
+3. Gradually introduce clearer architecture boundaries as the app grows (separate UI code, state handling, and persistence responsibilities).
 
-Use `SimpleStore` when you need small-to-medium local persistence (hundreds to low-thousands of records) and you want clarity over framework magic.
-Use `SimpleStoreUI` when you also want ready-to-use SwiftUI abstractions that remove repetitive loading and stream wiring.
+Learning advanced patterns like protocol-heavy designs, dependency injection, and deeper abstractions is valuable, but it takes experience and context.
+Early on, the higher priority is delivering bug-free, working apps on time.
 
-## Package Products
+The global function APIs exist to accelerate early development and learning. They are intentionally simple, and they are not the end-state architecture for larger apps.
 
-This package ships two libraries:
+As projects mature, move toward explicit store usage, typed action clients, and clearer separation of concerns.
 
-- `SimpleStore`: core persistence engine (Foundation only)
-- `SimpleStoreUI`: optional SwiftUI abstractions (`@SimpleStoreItems`, `SimpleStoreList`, `SimpleStoreStack`, `SimpleStoreStackRow`)
+## Start Here First
 
-## Installation (Swift Package Manager)
+If this is your first time using SimpleDataKit, follow this order:
+1. Install package.
+2. Create one model (`Todo`).
+3. Use `@SimpleStoreActions` in one view.
+4. Add one insert action and one delete action.
+5. Confirm data appears and updates in the list.
+
+Do this before adding extra abstraction layers.
+
+## Install (Xcode, Step by Step)
+
+Use Swift Package Manager in Xcode.
+
+1. Open your app project in Xcode.
+2. Click `File` -> `Add Package Dependencies...`
+3. Paste this URL: `https://github.com/davidthorn/SimpleDataKit.git`
+4. Choose version rule: `Up to Next Major` from `0.1.0`
+5. Click `Add Package`
+6. Select products:
+- `SimpleStore` (required)
+- `SimpleStoreUI` (optional, for SwiftUI helpers)
+
+Then import in code where needed:
+
+```swift
+import SimpleStore
+import SimpleStoreUI
+```
+
+If you prefer `Package.swift`, use:
 
 ```swift
 .package(url: "https://github.com/davidthorn/SimpleDataKit.git", from: "0.1.0")
 ```
 
-Core only:
+Products:
 
 ```swift
 .product(name: "SimpleStore", package: "SimpleDataKit")
-```
-
-Core + UI:
-
-```swift
-.product(name: "SimpleStore", package: "SimpleDataKit"),
 .product(name: "SimpleStoreUI", package: "SimpleDataKit")
 ```
 
-## Example Project (Included)
-
-This repository includes a full SwiftUI demo app:
-
-- `SimpleDataKitExample.xcodeproj`
-- Source in `SimpleDataKitExample/`
-
-Use it as a guided walkthrough for junior developers. It shows multiple ways to use the package without heavy architecture.
-
-How to run:
-
-1. Open `SimpleDataKitExample.xcodeproj` in Xcode.
-2. Select the `SimpleStoreExample` scheme.
-3. Run on an iOS Simulator.
-
-What the example screens teach:
-
-- `StartHereView`: basic orientation and where to begin.
-- `CoreStoreDemoView`: direct `SimpleStore` usage (`insert`, `update`, `read`, `delete`).
-- `GlobalFunctionsDemoView`: persistence with global functions (`save`, `loadAll`, `remove`).
-- `PersistableDemoView`: model-driven API via `Persistable`.
-- `ListDemoView`: `SimpleStoreList` usage for minimal UI boilerplate.
-- `StackDemoView`: `SimpleStoreStack` + `SimpleStoreStackRow` usage.
-- `ManualWiringDemoView`: explicit loading + stream wiring, for understanding the internals.
-
-The example intentionally favors clear, local-in-view code so beginners can learn usage first, then adopt more architecture over time.
-
-## Model Requirements
+## Model
 
 Your model must conform to:
-
 - `Codable`
 - `Identifiable`
 - `Sendable`
 - `Hashable`
 
-Example:
+Why each one is required:
+
+- `Codable`: lets `SimpleStore` save your model to disk (encode) and read it back (decode).
+- `Identifiable`: gives every model a stable `id` so updates, deletes, and reads can target one specific entity.
+- `Sendable`: keeps concurrency safe when values move across async/actor boundaries.
+- `Hashable`: allows efficient identity/set operations and predictable comparisons in store internals and UI helpers.
+
+Tip for beginners:
+- Use `UUID` for `id`.
+- Start with simple value types (`struct` with `String`, `Int`, `Bool`, `Date`, etc.).
+- Add custom types later once your basic flow works.
 
 ```swift
 import Foundation
@@ -100,227 +104,106 @@ public struct Todo: Codable, Identifiable, Sendable, Hashable {
 }
 ```
 
-## Quick Start (Core)
+## Choose Your API (Simple Rule)
 
-### 1. Create a store
+Use this decision rule:
+- Use `@SimpleStoreActions` for most new SwiftUI screens (best beginner default).
+- Use `@SimpleStoreItems` when you only need read + stream behavior.
+- Use core `SimpleStore` directly when you want full explicit control.
+- Use global functions (`save`, `loadAll`, `delete`, etc.) for very quick POC code.
+
+## Core Store (Direct)
 
 ```swift
-import Foundation
 import SimpleStore
 
-let store = try makeSimpleStore(for: Todo.self) // file name derived from type: Todo.json
-```
-
-Or explicit file:
-
-```swift
-let store = try makeSimpleStore(for: Todo.self, fileName: "todos.json")
-```
-
-### 1.1 Choose a directory (important)
-
-You can choose where files are stored using `FileManager.SearchPathDirectory`.
-
-Common options:
-
-- `.applicationSupportDirectory` (recommended default)
-- `.cachesDirectory`
-- `.documentDirectory`
-
-Best choice for most app data:
-
-- `.applicationSupportDirectory`
-
-Why:
-
-- Intended for app-managed persistent data
-- Not user-facing
-- Better default for internal store files
-
-When to use others:
-
-- `.cachesDirectory`: re-creatable data you can rebuild (can be purged by system)
-- `.documentDirectory`: user-visible/user-managed files
-
-Examples:
-
-```swift
-let supportStore = try makeSimpleStore(
+let store = try makeSimpleStore(
     for: Todo.self,
     directory: .applicationSupportDirectory
 )
 
-let cacheStore = try makeSimpleStore(
-    for: Todo.self,
-    directory: .cachesDirectory
-)
+try await store.insert(Todo(title: "Buy milk"))
+try await store.upsert(Todo(title: "Write docs"))
 
-let documentsStore = try makeSimpleStore(
-    for: Todo.self,
-    directory: .documentDirectory
-)
-```
-
-### 2. Insert / Upsert / Update
-
-```swift
-let todo = Todo(title: "Buy milk")
-
-try await store.insert(todo)      // create only, throws if ID exists
-try await store.upsert(todo)      // create or overwrite by ID
-try await store.update(todo)      // update only, throws if ID missing
-```
-
-### 3. Read
-
-```swift
 let all = try await store.all()
-let one = try await store.read(id: todo.id)
 let firstDone = try await store.first { $0.done }
-```
 
-### 4. Delete
-
-```swift
-try await store.delete(id: todo.id)
-try await store.delete(ids: [id1, id2, id3])
+try await store.delete(id: all[0].id)
 try await store.deleteAll()
 ```
 
-## Global Functional API (No Store Variable Needed)
+## Global Functions (Default Global Store)
 
-These APIs are useful when you want minimal setup.
+Use these when you want minimal setup and default store behavior.
+This is great for first POC iterations, but move to `@SimpleStoreActions` or explicit store usage as features grow.
 
 ```swift
 import SimpleStore
 
-try await save(Todo(title: "Write docs"))
+try await save(Todo(title: "Ship app"))
 let todos = try await loadAll(Todo.self)
-let todo = try await load(Todo.self, id: someID)
+let countAll = try await count(Todo.self)
 
-try await remove(Todo.self, id: someID)
-try await removeAll(Todo.self)
-```
-
-### Exists API
-
-```swift
-let alreadyStored = try await exists(Todo.self, id: someID)
-```
-
-### Count APIs
-
-```swift
-let total = try await count(Todo.self)
-let completed = try await count(Todo.self) { $0.done }
-```
-
-## Query APIs
-
-Store-level:
-
-```swift
-let filtered = try await store.filter { $0.title.contains("milk") }
-let hasDone = try await store.contains { $0.done }
-let doneCount = try await store.count { $0.done }
-```
-
-Global functional queries:
-
-```swift
-let filtered = try await query(Todo.self) { $0.title.contains("milk") }
-let first = try await loadFirst(Todo.self) { $0.done }
 let hasDone = try await contains(Todo.self) { $0.done }
 let doneCount = try await count(Todo.self) { $0.done }
+
+let one = try await load(Todo.self, id: todos[0].id)
+try await delete(Todo.self, id: one.id)
+try await deleteAll(Todo.self)
 ```
 
-`exists` vs `contains`:
+## Named Stores (Explicit)
 
-- `exists(Todo.self, id: ...)`: exact ID existence check
-- `contains(Todo.self) { ... }`: predicate-based check
+Named stores give you isolated data spaces for the same model type.
 
-## Live Updates with AsyncStream
+Use named stores when you want to keep one workflow's data completely separate from another workflow's data.
 
-### Store stream
+This is especially useful for:
 
-```swift
-let updates = await store.stream
+- SwiftUI previews:
+  Use a preview-only name (for example `"preview"`) so preview data never mixes with real app data.
+- Tests:
+  Use a test-specific name per test/suite to avoid cross-test contamination and flaky results.
+- Sandboxed flows:
+  Try risky or temporary behavior without touching your main persisted data.
+- Feature experiments:
+  Run alternate flows (for example onboarding variants) against isolated datasets.
 
-Task {
-    for await snapshot in updates {
-        print("Updated count:", snapshot.count)
-    }
-}
-```
+Default behavior reminder:
+- Global helper functions like `save`, `loadAll`, `delete`, `deleteAll` use the default global store.
+- Named stores are an explicit path, so you must resolve/register them directly.
 
-### Global stream
-
-```swift
-let updates = try await stream(Todo.self)
-
-Task {
-    for await snapshot in updates {
-        print("Todos:", snapshot)
-    }
-}
-```
-
-Custom buffering:
+Use explicit resolution/registration for named stores:
 
 ```swift
-let updates = try await stream(
-    Todo.self,
-    bufferingPolicy: .bufferingNewest(1)
+import SimpleStore
+
+let named = try await resolveGlobalStore(
+    for: Todo.self,
+    directory: .cachesDirectory,
+    name: "preview"
 )
+
+try await named.insert(Todo(title: "Preview item"))
+let previewTodos = try await named.all()
 ```
 
-## Error Behavior
+Practical pattern:
+1. Pick a stable name for the context (`"preview"`, `"tests"`, `"sandbox"`, etc.).
+2. Resolve the named store once in that context.
+3. Perform all reads/writes through that resolved store.
+4. Keep default global helpers for your normal app flow.
 
-`SimpleStore` throws `SimpleStore<Model>.StoreError`.
-
-Common cases:
-
-- `.alreadyExists(id:)`
-- `.notFound(id:)`
-- `.encodingFailed`
-- `.decodingFailed`
-- `.fileSystemOperationFailed`
-- `.unknown(error:)`
-
-Example:
+Optional explicit registration:
 
 ```swift
-do {
-    let todo = try await store.read(id: id)
-    print(todo)
-} catch let error as SimpleStore<Todo>.StoreError {
-    switch error {
-    case .notFound(let id):
-        print("Missing ID:", id)
-    default:
-        print(error)
-    }
-}
+let memoryStore = InMemorySimpleStore<Todo>()
+await registerGlobalStore(memoryStore, for: Todo.self, directory: .cachesDirectory, name: "preview")
 ```
 
-## Type Erasure (`AnySimpleStore`)
-
-Use `AnySimpleStore` when you want one concrete type while hiding implementation details.
+## Persistable
 
 ```swift
-let fileStore = try makeSimpleStore(for: Todo.self)
-let erased = AnySimpleStore(fileStore)
-
-try await erased.insert(Todo(title: "Type erased"))
-let todos = try await erased.all()
-```
-
-## Persistable Model API
-
-If your model adopts `Persistable`, you can call persistence APIs directly on the model type/instance.
-
-```swift
-import Foundation
 import SimpleStore
 
 public struct Todo: Persistable {
@@ -334,41 +217,72 @@ public struct Todo: Persistable {
         self.done = done
     }
 }
-```
 
-Instance-level:
-
-```swift
-let todo = Todo(title: "Ship app")
-
+let todo = Todo(title: "Call API")
 try await todo.persist()
-let saved = try await todo.exists()
+let exists = try await todo.exists()
 try await todo.delete()
+try await Todo.deleteAll()
 ```
 
-Type-level:
+## SwiftUI Quick Setup
+
+### Complete beginner example (single view, working CRUD flow)
 
 ```swift
-let all = try await Todo.loadAll()
-let first = try await Todo.loadFirst { $0.done }
-let hasDone = try await Todo.contains { $0.done }
-let doneCount = try await Todo.count { $0.done }
-let updates = try await Todo.stream()
-```
-
-## SwiftUI (`SimpleStoreUI`)
-
-Import:
-
-```swift
+import SwiftUI
 import SimpleStoreUI
+
+struct TodosView: View {
+    @SimpleStoreActions(Todo.self, directory: .applicationSupportDirectory)
+    private var actions
+
+    var body: some View {
+        NavigationStack {
+            List($actions) { todo in
+                HStack {
+                    Text(todo.title)
+                    Spacer()
+                    actions.deleteAction(id: todo.id) { error in
+                        if let error {
+                            print("Delete failed:", error)
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+            .toolbar {
+                actions.insertAction {
+                    Todo(title: "Todo \(Date())")
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+            .navigationTitle("Todos")
+        }
+    }
+}
 ```
 
-### `@SimpleStoreItems`
+What this gives you immediately:
+- Data is persisted.
+- List updates automatically.
+- Insert and delete work with minimal boilerplate.
 
-Auto-loads and auto-subscribes to store updates.
+### 1. Read + stream items automatically
+
+This is one of the core productivity features of `SimpleStoreUI`.
+
+When you declare `@SimpleStoreItems`, the store is automatically resolved for that model and directory, initial data is loaded, and live streaming updates are wired for you.
+You do not need to manually create a store, manually call `loadAll`, or manually manage an `AsyncStream` task.
+
+In short: declare once, and the persistence + streaming plumbing is handled internally.
 
 ```swift
+import SwiftUI
+import SimpleStoreUI
+
 struct TodosView: View {
     @SimpleStoreItems(Todo.self) private var todos
 
@@ -380,77 +294,102 @@ struct TodosView: View {
 }
 ```
 
-### `SimpleStoreList`
-
-List-based view that handles loading/streaming for you.
+### 2. Unified actions + streamed items with one wrapper
 
 ```swift
-SimpleStoreList(Todo.self) { todo in
-    Text(todo.title)
-}
-```
+import SwiftUI
+import SimpleStoreUI
 
-### `SimpleStoreStack`
+struct TodosView: View {
+    @SimpleStoreActions(Todo.self, directory: .cachesDirectory, storeName: "preview")
+    private var actions
 
-ScrollView + LazyVStack variant.
+    var body: some View {
+        VStack {
+            List($actions) { todo in
+                Text(todo.title)
+            }
 
-```swift
-SimpleStoreStack(Todo.self, spacing: 0) { todo in
-    SimpleStoreStackRow {
-        Text(todo.title)
+            actions.insertAction {
+                Todo(title: "Added")
+            } label: {
+                Image(systemName: "plus")
+            }
+        }
     }
 }
 ```
 
-### `SimpleStoreStackRow`
+`@SimpleStoreActions` gives you:
+- `actions`: action API (`insert`, `upsert`, `delete`, `deleteAll`, `query`, `count`, etc.)
+- `$actions`: current streamed `[Model]`
 
-List-like row styling helper for stack layouts.
+Why this matters:
+- You can build and validate your view quickly with real persistence behavior.
+- You can keep early code local to the view while your feature is still evolving.
+
+As your app grows, you can move to a more layered structure:
+1. View
+2. ViewModel
+3. Service layer
+4. Data store
+
+`actions` helps you ship the first working version now, then extract business logic into ViewModel/service layers later without rewriting your whole feature from scratch.
+
+## Reusable UI Components
+
+- `SimpleStoreList(Model.self, storeName: ...)`
+- `SimpleStoreStack(Model.self, storeName: ...)`
+- `SimpleStoreStackRow { ... }`
+- `SimpleStoreInsertButton(...)`
+- `SimpleStoreDeleteButton(...)`
+
+Example delete button:
 
 ```swift
-SimpleStoreStackRow(showsSeparator: true) {
-    VStack(alignment: .leading) {
-        Text(todo.title)
-        Text(todo.id.uuidString).font(.caption)
+actions.deleteAction(id: todo.id) { error in
+    if let error {
+        print("Delete failed:", error)
     }
+} label: {
+    Image(systemName: "trash")
 }
 ```
 
-## Best Practices
+## Directory Guidance
 
-- Prefer `upsert` when syncing external data.
-- Use explicit `insert` / `update` when you want strict write behavior.
-- Use one model type per store file.
-- Keep model structs small and focused.
-- For UI, prefer `SimpleStoreUI` wrappers to reduce boilerplate.
+- Use `.applicationSupportDirectory` for normal app-managed persistent data
+- Use `.cachesDirectory` for replaceable/preview/test data
+- Use `.documentDirectory` only when user-visible file behavior is intended
 
-## When Not to Use SimpleStore
+## Common Beginner Mistakes
 
-Consider a heavier solution if you need:
+1. Changing model `id` accidentally.
+Always keep `id` stable once created, otherwise updates/deletes may not target the expected row.
 
-- Complex relational data modeling
-- Advanced indexing/query planners
-- Very large datasets
-- Multi-process shared database features
+2. Using default global store for preview/test data.
+Use named stores for preview/tests so you do not pollute normal app data.
 
-## API Overview
+3. Adding too much architecture too early.
+Ship a clean working screen first, then extract layers when duplication or complexity appears.
 
-### Core store
+## Notes
 
-- `insert`, `upsert`, `update`
-- `all`, `read`, `first`, `filter`
-- `contains(id:)`, `contains(where:)`
-- `count()`, `count(where:)`
-- `delete(id:)`, `delete(ids:)`, `deleteAll`, `replaceAll`
-- `stream`, `makeStream(bufferingPolicy:)`
+- `remove` / `removeAll` aliases exist for compatibility; use `delete` / `deleteAll` in new code.
+- `SimpleStore` is ideal for straightforward local persistence and UI-driven apps.
 
-### Global functions
+## Contributing
 
-- `save`, `load`, `loadAll`, `loadFirst`
-- `remove`, `removeAll`
-- `query`
-- `contains`, `count`
-- `stream`
+Contributions are welcome, especially improvements that make the package clearer for junior developers.
 
-## License
+When contributing:
+1. Prefer clarity over cleverness in naming and API design.
+2. Keep examples practical and focused on building real apps quickly.
+3. Preserve the teaching path: simple first, architecture depth second.
+4. Keep public APIs consistent (`delete` naming, explicit store behavior, predictable defaults).
+5. Add or update tests for behavioral changes.
 
-Add your license here (for example MIT).
+Before opening a PR:
+1. Run `swift test`.
+2. Update README examples when public API usage changes.
+3. Keep docs focused on current usage, not historical migration notes.

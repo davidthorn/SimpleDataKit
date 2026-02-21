@@ -19,9 +19,16 @@ public struct SimpleStoreItems<Model: Codable & Identifiable & Sendable & Hashab
 
     public init(
         _ type: Model.Type,
-        directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
+        directory: FileManager.SearchPathDirectory = .applicationSupportDirectory,
+        storeName: String? = nil
     ) {
-        _loader = StateObject(wrappedValue: SimpleStoreItemsLoader(type: type, directory: directory))
+        _loader = StateObject(
+            wrappedValue: SimpleStoreItemsLoader(
+                type: type,
+                directory: directory,
+                storeName: storeName
+            )
+        )
     }
 
     public var wrappedValue: [Model] {

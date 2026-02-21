@@ -21,11 +21,12 @@ public struct SimpleStoreStack<Model: Codable & Identifiable & Sendable & Hashab
     public init(
         _ type: Model.Type,
         directory: FileManager.SearchPathDirectory = .applicationSupportDirectory,
+        storeName: String? = nil,
         alignment: HorizontalAlignment = .leading,
         spacing: CGFloat? = nil,
         @ViewBuilder rowContent: @escaping (Model) -> RowContent
     ) {
-        self._items = SimpleStoreItems(type, directory: directory)
+        self._items = SimpleStoreItems(type, directory: directory, storeName: storeName)
         self.alignment = alignment
         self.spacing = spacing
         self.rowContent = rowContent

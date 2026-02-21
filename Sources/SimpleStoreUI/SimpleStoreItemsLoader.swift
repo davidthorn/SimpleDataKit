@@ -17,14 +17,17 @@ public final class SimpleStoreItemsLoader<Model: Codable & Identifiable & Sendab
     @Published public private(set) var lastError: Error?
 
     private let directory: FileManager.SearchPathDirectory
+    private let storeName: String?
     private var observationTask: Task<Void, Never>?
 
     public init(
         type: Model.Type,
-        directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
+        directory: FileManager.SearchPathDirectory = .applicationSupportDirectory,
+        storeName: String? = nil
     ) {
         _ = type
         self.directory = directory
+        self.storeName = storeName
         self.items = []
         self.lastError = nil
         self.observationTask = nil
@@ -41,13 +44,14 @@ public final class SimpleStoreItemsLoader<Model: Codable & Identifiable & Sendab
 
         observationTask = Task {
             do {
-                let loaded = try await loadAll(Model.self, directory: directory)
+                let store = try await resolveGlobalStore(for: Model.self, directory: directory, name: storeName)
+                let loaded = try await store.all()
                 if Task.isCancelled {
                     return
                 }
                 items = loaded
 
-                let updates = try await stream(Model.self, directory: directory)
+                let updates = await store.stream
                 for await snapshot in updates {
                     if Task.isCancelled {
                         return

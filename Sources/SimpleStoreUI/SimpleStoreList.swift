@@ -19,9 +19,10 @@ public struct SimpleStoreList<Model: Codable & Identifiable & Sendable & Hashabl
     public init(
         _ type: Model.Type,
         directory: FileManager.SearchPathDirectory = .applicationSupportDirectory,
+        storeName: String? = nil,
         @ViewBuilder rowContent: @escaping (Model) -> RowContent
     ) {
-        self._items = SimpleStoreItems(type, directory: directory)
+        self._items = SimpleStoreItems(type, directory: directory, storeName: storeName)
         self.rowContent = rowContent
     }
 

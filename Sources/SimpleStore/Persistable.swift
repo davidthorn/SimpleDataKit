@@ -71,13 +71,20 @@ public extension Persistable {
         return try await store.contains(where: predicate)
     }
 
-    /// Removes all models of this type.
+    /// Deletes all models of this type.
     /// - Parameter directory: The persistence directory.
-    static func removeAll(
+    static func deleteAll(
         directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
     ) async throws {
         let store = try await resolveGlobalStore(for: Self.self, directory: directory)
         try await store.deleteAll()
+    }
+
+    @available(*, deprecated, renamed: "deleteAll(directory:)")
+    static func removeAll(
+        directory: FileManager.SearchPathDirectory = .applicationSupportDirectory
+    ) async throws {
+        try await deleteAll(directory: directory)
     }
 
     /// Returns a stream of snapshots for this model type.
